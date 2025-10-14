@@ -1,6 +1,10 @@
 import express from "express";
 import path from 'path';
 import { fileURLToPath } from 'url'; 
+import axios from "axios";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 const app = express();
 const PORT = 3000; 
@@ -16,9 +20,28 @@ app.set('view engine', 'ejs');
 app.use(express.static(path.join(__dirname, 'public')));
 
 
-app.get('/', (req, res) => {
-  res.render('index');  
+app.get("/", async (req, res) => {
+  try {
+    const response = await axios.get("https://api.api-ninjas.com/v1/quotes", {
+      headers: { "X-Api-Key": process.env.API},
+    });
+
+    const data = response.data[0]; // API returns array with one quote
+    res.render("index.ejs", { content: data });
+  } 
+  catch (error) {
+    console.error(error);
+    res.render("index.ejs", {
+      content: { quote: "Failed to load quote 😢", author: "Unknown" },
+    });
+  }
 });
+
+
+app.post("/weekly", (req, res) => res.render("weekly.ejs"));
+app.get("/pomodoro", (req, res) => res.render("pomodoro.ejs"));
+app.get("/notes", (req, res) => res.render("notes.ejs"));
+app.get("/report", (req, res) => res.render("report.ejs"));
 
 
 app.listen(PORT, () => {
