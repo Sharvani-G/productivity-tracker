@@ -38,7 +38,7 @@ app.get("/", async (req, res) => {
 });
 
 
-app.post("/weekly", (req, res) => res.render("weekly.ejs"));
+app.get("/weekly", (req, res) => res.render("weekly.ejs"));
 app.get("/pomodoro", (req, res) => res.render("pomodoro.ejs"));
 app.get("/notes", (req, res) => res.render("notes.ejs"));
 app.get("/report", (req, res) => res.render("report.ejs"));
