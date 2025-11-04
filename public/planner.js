@@ -1,206 +1,180 @@
 document.addEventListener('DOMContentLoaded', () => {
 
-    // format date om left
-    const today = new Date();
-    const options = { year: 'numeric', month: 'long', day: 'numeric' };
-    document.getElementById("date").textContent = today.toLocaleDateString(undefined, options);
+/* Format date on left */
+const today = new Date();
+const options = { year: 'numeric', month: 'long', day: 'numeric' };
+document.getElementById("date").textContent = today.toLocaleDateString(undefined, options);
 
+/* Setting dates for week grid */
+const date = new Date();
 
-    // to swtich between week and month view
-    // 1. Get references to the buttons and content sections
-    const weekBtn = document.getElementById('week-btn');
-    const monthBtn = document.getElementById('month-btn');
-    const weeklyContent = document.getElementById('weekly-content');
-    const monthlyContent = document.getElementById('monthly-content');
-    const buttons = document.querySelectorAll('.planner-header button');
+function getPresentWeek(date) {
+/* getDay() gives 0-6 representing Sun=0, setDate() sets the date you pass */
+const day = date.getDay();
+const tosubtractdays = day === 0 ? -6 : 1 - day;
+const monday = new Date(date);
+monday.setDate(date.getDate() + tosubtractdays);
+return monday;
+}
 
-    // Function to switch content
-    function switchView(viewToShow) {
-        if (viewToShow === 'week') {
-            weeklyContent.classList.remove('hidden'); // show weekly
-            monthlyContent.classList.add('hidden');   // hide monthly
-        } else if (viewToShow === 'month') {
-            weeklyContent.classList.add('hidden');    // hide weekly
-            monthlyContent.classList.remove('hidden'); // show monthly
-        }
-    }
+const left = document.getElementById('pre-week');
+const right = document.getElementById('post-week');
 
-    // Function to highlight the clicked button
-    function updateActiveButton(clickedButton) {
-        buttons.forEach(button => button.classList.remove('active')); // remove highlight from all
-        clickedButton.classList.add('active'); // highlight the clicked one
-    }
+/* Object to store tasks by week start date */
+const tasksByWeek = {};
 
-    // 3. Add click listeners to buttons
-    weekBtn.addEventListener('click', () => {
-        switchView('week');           // show weekly content
-        updateActiveButton(weekBtn);  // highlight Week button
-    });
+function formatWeekKey(date) {
+/* Format key as YYYY-MM-DD for week Monday */
+const monday = getPresentWeek(date);
+return monday.toISOString().split('T')[0];
+}
 
-    monthBtn.addEventListener('click', () => {
-        switchView('month');          // show monthly content
-        updateActiveButton(monthBtn); // highlight Month button
-    });
+function updateWeek() {
+const monday = getPresentWeek(date);
+const weekKey = formatWeekKey(date);
 
+  /* Set day numbers in the week */
+  for (let i = 0; i < 7; i++) {
+      const dayDate = new Date(monday);
+      dayDate.setDate(monday.getDate() + i);
+      const dayDiv = document.getElementById('d' + (i + 1));
+      dayDiv.querySelector('.date').textContent = dayDate.getDate();
 
-    // setting dates for week grid
-    const date = new Date();
+      /* Clear existing tasks in the day div */
+      const existingTasks = dayDiv.querySelectorAll('.task-card');
+      existingTasks.forEach(t => t.remove());
 
-    function getPresentWeek(date) {
-        const day = date.getDay();
-        const tosubtractdays = day === 0 ? -6 : 1 - day;
-        const monday = new Date(date);
-        monday.setDate(date.getDate() + tosubtractdays);
-        return monday;
-    }
-    // getday() gives 0-6 representing sun=0,setDate() set the data u pass as parameter
+      /* Load tasks for this week if any */
+      if (tasksByWeek[weekKey] && tasksByWeek[weekKey][i]) {
+          tasksByWeek[weekKey][i].forEach(taskData => {
+              const taskCard = createTaskCard(taskData.text, taskData.status);
+              dayDiv.appendChild(taskCard);
+          });
+      }
+  }
 
-    const left = document.getElementById('pre-week');
-    const right = document.getElementById('post-week');
+}
 
-    function updateWeek() {
-        const monday = getPresentWeek(date);
-        for (let i = 0; i < 7; i++) {
-            const dayDate = new Date(monday);
-            dayDate.setDate(monday.getDate() + i);
-            document.getElementById('d' + (i + 1)).querySelector('.date').textContent = dayDate.getDate();
-        }
-    }
-
-    // On page load
-    updateWeek();
-
-    // On button clicks
-    left.addEventListener("click", () => {
-        date.setDate(date.getDate() - 7);
-        updateWeek();
-    });
-
-    right.addEventListener("click", () => {
-        date.setDate(date.getDate() + 7);
-        updateWeek();
-    });
-
-
-    // to create dynamic div
-
-    const addBtns = document.querySelectorAll('.add-task');
-
-    addBtns.forEach(addBtn => {
-const dayDiv = addBtn.closest('.day') || addBtn.closest('.content') || addBtn.parentElement;
-
-        addBtn.addEventListener('click', () => {
-            // This code runs when you click + Task
-            const taskCard = document.createElement('div'); // creates <div></div>
-            taskCard.classList.add('task-card'); // adds the class for CSS styling
-
-            const input = document.createElement('input'); // creates <input>
-            input.type = 'text'; // sets type="text"
-            input.placeholder = 'Enter task'; // placeholder text
-
-            const saveBtn = document.createElement('button');
-            saveBtn.textContent = 'Save';
-
-            const statusDiv = document.createElement('div');
-            statusDiv.classList.add('status');
-
-            const options = ['Completed', 'Abandoned', 'In Process'];
-
-            options.forEach(opt => {
-                const label = document.createElement('label');
-                const radio = document.createElement('input');
-                radio.type = 'radio';
-                radio.name = 'status_' + Date.now(); // unique name for each task
-                radio.value = opt;
-                label.appendChild(radio);
-                label.appendChild(document.createTextNode(opt));
-                statusDiv.appendChild(label);
-            });
-
-
-            taskCard.appendChild(input);      // input box inside task card
-            taskCard.appendChild(saveBtn);    // save button inside task card
-            taskCard.appendChild(statusDiv);  // radio buttons container inside task card
-            dayDiv.appendChild(taskCard); // adds the newly created task card to the day
-
-
-
-            saveBtn.dataset.mode = 'save'; // 1️⃣ initially the button is in "save" mode
-saveBtn.addEventListener('click', () => {
-    if (saveBtn.dataset.mode === 'save') {
-        const taskText = input.value.trim();
-        const selectedRadio = statusDiv.querySelector('input[type="radio"]:checked');
-        const status = selectedRadio ? selectedRadio.value : 'No status';
-
-        // remove previous status classes
-        taskCard.classList.remove('completed', 'abandoned', 'in-process', 'default');
-
-        // add new class based on status
-        if (status === 'No status') {
-            taskCard.classList.add('default');
-        } else if (status === 'Completed') {
-            taskCard.classList.add('completed');
-        } else if (status === 'Abandoned') {
-            taskCard.classList.add('abandoned');
-        } else if (status === 'In Process') {
-            taskCard.classList.add('in-process');
-        }
-
-        // replace input with saved text
-        const savedText = document.createElement('p');
-        savedText.textContent = `${taskText} - ${status}`;
-        taskCard.replaceChild(savedText, input);
-
-        // disable radio buttons after saving
-        statusDiv.querySelectorAll('input').forEach(r => r.disabled = true);
-
-        // switch button to "edit" mode
-        saveBtn.dataset.mode = 'edit';
-        saveBtn.textContent = 'Edit';
-
-        // ====== ADDED: Send task to server ======
-        const summaryData = {
-            date: today.toISOString().split('T')[0], // today's date in YYYY-MM-DD
-            tasks: [
-                {
-                    text: taskText,
-                    status: status,
-                    id: 'task_' + Date.now() // unique id for the task
-                }
-            ]
-        };
-
-        fetch('/save-summary', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(summaryData)
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.success) {
-                console.log('Saved to server ✅'); // confirm in console
-            }
-        })
-        .catch(err => console.error('Error saving to server:', err));
-        // ====== END ADDED ======
-    }
-    else if (saveBtn.dataset.mode === 'edit') {
-        // switch back to "save" mode for editing
-        const existingText = taskCard.querySelector('p').textContent.split(' - ')[0];
-        const newInput = document.createElement('input');
-        newInput.type = 'text';
-        newInput.value = existingText;
-        taskCard.replaceChild(newInput, taskCard.querySelector('p'));
-
-        // enable radio buttons again
-        statusDiv.querySelectorAll('input').forEach(r => r.disabled = false);
-
-        saveBtn.dataset.mode = 'save';
-        saveBtn.textContent = 'Save';
-    }
+/* Previous / Next week buttons */
+left.addEventListener("click", () => {
+date.setDate(date.getDate() - 7);
+updateWeek();
 });
-        });
-    });
+
+right.addEventListener("click", () => {
+date.setDate(date.getDate() + 7);
+updateWeek();
+});
+
+/* Function to create task card element */
+function createTaskCard(text = '', status = 'default') {
+const taskCard = document.createElement('div');
+taskCard.classList.add('task-card');
+
+  /* Set status class */
+  taskCard.classList.add(status.toLowerCase().replace(' ', '-') || 'default');
+
+  /* Input box */
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.value = text;
+  input.placeholder = 'Enter task';
+
+  /* Save/Edit button */
+  const saveBtn = document.createElement('button');
+  saveBtn.textContent = 'Save';
+  saveBtn.dataset.mode = 'save';
+
+  /* Status radio buttons */
+  const statusDiv = document.createElement('div');
+  statusDiv.classList.add('status');
+  const options = ['Completed', 'Abandoned', 'In Process'];
+  options.forEach(opt => {
+      const label = document.createElement('label');
+      const radio = document.createElement('input');
+      radio.type = 'radio';
+      radio.name = 'status_' + Date.now(); // unique
+      radio.value = opt;
+      if (opt === status) radio.checked = true;
+      label.appendChild(radio);
+      label.appendChild(document.createTextNode(opt));
+      statusDiv.appendChild(label);
+  });
+
+  taskCard.appendChild(input);
+  taskCard.appendChild(saveBtn);
+  taskCard.appendChild(statusDiv);
+
+  /* Save/Edit click handler */
+  saveBtn.addEventListener('click', () => {
+      const weekKey = formatWeekKey(date);
+
+      const dayDiv = taskCard.parentElement;
+      const dayIndex = parseInt(dayDiv.id.replace('d', '')) - 1;
+
+      if (saveBtn.dataset.mode === 'save') {
+          const taskText = input.value.trim();
+          const selectedRadio = statusDiv.querySelector('input[type="radio"]:checked');
+          const taskStatus = selectedRadio ? selectedRadio.value : 'No status';
+
+          /* Remove previous status classes */
+          taskCard.classList.remove('completed', 'abandoned', 'in-process', 'default');
+
+          /* Add new class */
+          if (taskStatus === 'No status') taskCard.classList.add('default');
+          else if (taskStatus === 'Completed') taskCard.classList.add('completed');
+          else if (taskStatus === 'Abandoned') taskCard.classList.add('abandoned');
+          else if (taskStatus === 'In Process') taskCard.classList.add('in-process');
+
+          /* Replace input with text */
+          const savedText = document.createElement('p');
+          savedText.textContent = `${taskText} - ${taskStatus}`;
+          taskCard.replaceChild(savedText, input);
+
+          /* Disable radios */
+          statusDiv.querySelectorAll('input').forEach(r => r.disabled = true);
+
+          /* Switch to edit mode */
+          saveBtn.dataset.mode = 'edit';
+          saveBtn.textContent = 'Edit';
+
+          /* Store in tasksByWeek */
+          if (!tasksByWeek[weekKey]) tasksByWeek[weekKey] = {};
+          if (!tasksByWeek[weekKey][dayIndex]) tasksByWeek[weekKey][dayIndex] = [];
+          tasksByWeek[weekKey][dayIndex].push({
+              text: taskText,
+              status: taskStatus
+          });
+      } else if (saveBtn.dataset.mode === 'edit') {
+          const existingText = taskCard.querySelector('p').textContent.split(' - ')[0];
+          const newInput = document.createElement('input');
+          newInput.type = 'text';
+          newInput.value = existingText;
+          taskCard.replaceChild(newInput, taskCard.querySelector('p'));
+
+          /* Enable radios */
+          statusDiv.querySelectorAll('input').forEach(r => r.disabled = false);
+
+          saveBtn.dataset.mode = 'save';
+          saveBtn.textContent = 'Save';
+      }
+  });
+
+  return taskCard;
+
+}
+
+/* Attach +Task button functionality */
+const addBtns = document.querySelectorAll('.add-task');
+addBtns.forEach(addBtn => {
+addBtn.addEventListener('click', () => {
+const dayDiv = addBtn.closest('.day') || addBtn.closest('.content') || addBtn.parentElement;
+const taskCard = createTaskCard();
+dayDiv.appendChild(taskCard);
+});
+});
+
+/* Initial week load */
+updateWeek();
 
 }); // end DOMContentLoaded
-
