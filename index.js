@@ -1,5 +1,6 @@
 import express from "express";
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url'; 
 import axios from "axios";
 import dotenv from "dotenv";
@@ -43,7 +44,33 @@ app.get("/pomodoro", (req, res) => res.render("pomodoro.ejs"));
 app.get("/notes", (req, res) => res.render("notes.ejs"));
 app.get("/report", (req, res) => res.render("report.ejs"));
 
+// to store tasks to json
+app.use(express.json());
 
+const filePath = path.join(process.cwd(), "tasks.json");
+
+app.post('/save-summary', (req, res) => {
+    const newSummary = req.body;
+
+    let allData = [];
+    if (fs.existsSync(filePath)) {
+        const raw = fs.readFileSync(filePath);
+        allData = JSON.parse(raw);
+    }
+
+    const existingIndex = allData.findIndex(item => item.date === newSummary.date);
+    if (existingIndex >= 0) {
+        allData[existingIndex] = newSummary; // update
+    } else {
+        allData.push(newSummary); // add new
+    }
+
+    fs.writeFileSync(filePath, JSON.stringify(allData, null, 2));
+    res.send({ success: true });
+});
+
+
+// Start the server
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
 });
