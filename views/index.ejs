@@ -9,8 +9,11 @@
 <body>
     <%-include("partials/header.ejs")%>
     <div class="login">
-    <button type="button" class="btn btn-dark sign">login</button>
-    <button type="button" class="btn btn-dark sign">signup</button>
+    
+   <form action="/login" method="get">
+  <button type="submit" class="btn btn-dark sign">Login</button>
+</form>
+
 </div>
 
 <!-- Main Content Section -->

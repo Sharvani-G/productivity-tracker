@@ -38,6 +38,11 @@ app.get("/", async (req, res) => {
   }
 });
 
+// Express route
+app.get("/login", (req, res) => {
+  res.render("login.ejs");
+});
+
 
 app.get("/weekly", (req, res) => res.render("weekly.ejs"));
 app.get("/pomodoro", (req, res) => res.render("pomodoro.ejs"));
