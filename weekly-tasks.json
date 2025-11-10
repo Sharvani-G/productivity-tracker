@@ -1,0 +1,20 @@
+{
+  "2025-11-04": {
+    "0": [
+      {
+        "text": "Test task",
+        "status": "Completed",
+        "id": "task_123"
+      }
+    ]
+  },
+  "2025-11-10": {
+    "0": [
+      {
+        "text": "Complete project documentation",
+        "status": "Completed",
+        "id": "task_1762802299138_5txjjqgwl"
+      }
+    ]
+  }
+}

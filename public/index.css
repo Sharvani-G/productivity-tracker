@@ -234,7 +234,7 @@ button {
     align-items: flex-start;
     background-color: rgba(255, 255, 255, 0.1);
     backdrop-filter: blur(4px);
-    padding: 4px 4px;
+    padding: 8px;
     border-radius: 8px;
     margin-bottom: 8px;
     width: 100%;
@@ -242,36 +242,63 @@ button {
 }
 
 .task-card input[type="text"] {
-    padding: 0 6px;        /* remove vertical padding */
-    margin: 0;
-    height: 24px;          /* fix height to make it compact */
-    line-height: 24px; 
+    padding: 6px 8px;
+    margin: 0 0 5px 0;
+    height: 28px;
+    line-height: 28px; 
     border-radius: 5px;
     border: 1px solid #ccc;
     outline: none;
-    background-color: rgba(255,255,255,0.2);
+    background-color: rgba(255,255,255,0.9);
     color: rgb(0, 0, 0);
-    width: calc(100% - 10px); /* slightly smaller so it fits inside */
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.task-card p {
+    margin: 5px 0;
+    padding: 4px;
+    color: #000;
+    font-weight: 500;
+    word-wrap: break-word;
+    width: 100%;
 }
 
 .task-card button {
-    padding: 5px 10px;
+    padding: 6px 12px;
     border-radius: 5px;
     border: none;
     cursor: pointer;
     background-color: #444;
     color: white;
     transition: 0.2s;
+    font-size: 0.85em;
 }
 
 .task-card button:hover {
     background-color: #666;
 }
 
+.task-card button.delete-btn {
+    background-color: #c00;
+}
+
+.task-card button.delete-btn:hover {
+    background-color: #e00;
+}
+
 .task-card .status label {
     display: flex;
     align-items: center;
-    font-size: 0.9em;
+    font-size: 0.8em;
+    margin-right: 8px;
+    color: #000;
+    cursor: pointer;
+}
+
+.task-card .status input[type="radio"] {
+    margin-right: 3px;
+    cursor: pointer;
 }
 
 /* Make radio buttons inline and contained */
@@ -280,6 +307,8 @@ button {
     flex-wrap: wrap;
     justify-content: flex-start;
     align-items: center;
+    margin-top: 5px;
+    width: 100%;
 }
 
 /* Coloring the card based on selected status */
