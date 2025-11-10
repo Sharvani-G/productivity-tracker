@@ -21,12 +21,43 @@ const left = document.getElementById('pre-week');
 const right = document.getElementById('post-week');
 
 /* Object to store tasks by week start date */
-const tasksByWeek = {};
+let tasksByWeek = {};
 
 function formatWeekKey(date) {
 /* Format key as YYYY-MM-DD for week Monday */
 const monday = getPresentWeek(date);
 return monday.toISOString().split('T')[0];
+}
+
+/* Load tasks from backend */
+async function loadTasksFromBackend() {
+    try {
+        const response = await fetch('/api/weekly-tasks');
+        if (response.ok) {
+            tasksByWeek = await response.json();
+            updateWeek();
+        }
+    } catch (error) {
+        console.error('Error loading tasks:', error);
+    }
+}
+
+/* Save tasks to backend */
+async function saveTasksToBackend() {
+    try {
+        const response = await fetch('/api/weekly-tasks', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(tasksByWeek)
+        });
+        if (!response.ok) {
+            console.error('Failed to save tasks');
+        }
+    } catch (error) {
+        console.error('Error saving tasks:', error);
+    }
 }
 
 function updateWeek() {
@@ -47,7 +78,7 @@ const weekKey = formatWeekKey(date);
       /* Load tasks for this week if any */
       if (tasksByWeek[weekKey] && tasksByWeek[weekKey][i]) {
           tasksByWeek[weekKey][i].forEach(taskData => {
-              const taskCard = createTaskCard(taskData.text, taskData.status);
+              const taskCard = createTaskCard(taskData.text, taskData.status, taskData.id, i);
               dayDiv.appendChild(taskCard);
           });
       }
@@ -67,9 +98,15 @@ updateWeek();
 });
 
 /* Function to create task card element */
-function createTaskCard(text = '', status = 'default') {
+function createTaskCard(text = '', status = 'default', taskId = null, dayIndex = null) {
 const taskCard = document.createElement('div');
 taskCard.classList.add('task-card');
+
+  /* Generate unique ID if not provided */
+  if (!taskId) {
+      taskId = 'task_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+  }
+  taskCard.dataset.taskId = taskId;
 
   /* Set status class */
   taskCard.classList.add(status.toLowerCase().replace(' ', '-') || 'default');
@@ -80,40 +117,97 @@ taskCard.classList.add('task-card');
   input.value = text;
   input.placeholder = 'Enter task';
 
+  /* Button container */
+  const btnContainer = document.createElement('div');
+  btnContainer.style.display = 'flex';
+  btnContainer.style.gap = '5px';
+  btnContainer.style.marginTop = '5px';
+
   /* Save/Edit button */
   const saveBtn = document.createElement('button');
-  saveBtn.textContent = 'Save';
-  saveBtn.dataset.mode = 'save';
+  saveBtn.textContent = text ? 'Edit' : 'Save';
+  saveBtn.dataset.mode = text ? 'edit' : 'save';
+  saveBtn.style.flex = '1';
+
+  /* Delete button */
+  const deleteBtn = document.createElement('button');
+  deleteBtn.textContent = 'Delete';
+  deleteBtn.classList.add('delete-btn');
+  deleteBtn.style.backgroundColor = '#c00';
 
   /* Status radio buttons */
   const statusDiv = document.createElement('div');
   statusDiv.classList.add('status');
   const options = ['Completed', 'Abandoned', 'In Process'];
+  const radioGroupName = 'status_' + taskId;
+  
   options.forEach(opt => {
       const label = document.createElement('label');
       const radio = document.createElement('input');
       radio.type = 'radio';
-      radio.name = 'status_' + Date.now(); // unique
+      radio.name = radioGroupName;
       radio.value = opt;
       if (opt === status) radio.checked = true;
+      if (text) radio.disabled = true; // Disable if already saved
       label.appendChild(radio);
       label.appendChild(document.createTextNode(opt));
       statusDiv.appendChild(label);
   });
 
-  taskCard.appendChild(input);
-  taskCard.appendChild(saveBtn);
+  /* If task already has text, show it as saved */
+  if (text) {
+      const savedText = document.createElement('p');
+      savedText.textContent = `${text} - ${status}`;
+      savedText.style.margin = '5px 0';
+      savedText.style.color = '#000';
+      taskCard.appendChild(savedText);
+  } else {
+      taskCard.appendChild(input);
+  }
+
+  btnContainer.appendChild(saveBtn);
+  btnContainer.appendChild(deleteBtn);
+  taskCard.appendChild(btnContainer);
   taskCard.appendChild(statusDiv);
+
+  /* Delete button handler */
+  deleteBtn.addEventListener('click', () => {
+      const weekKey = formatWeekKey(date);
+      const dayDiv = taskCard.parentElement;
+      const dayIdx = parseInt(dayDiv.id.replace('d', '')) - 1;
+
+      /* Remove from tasksByWeek */
+      if (tasksByWeek[weekKey] && tasksByWeek[weekKey][dayIdx]) {
+          tasksByWeek[weekKey][dayIdx] = tasksByWeek[weekKey][dayIdx].filter(
+              t => t.id !== taskId
+          );
+          
+          /* Clean up empty arrays */
+          if (tasksByWeek[weekKey][dayIdx].length === 0) {
+              delete tasksByWeek[weekKey][dayIdx];
+          }
+      }
+
+      /* Remove from DOM */
+      taskCard.remove();
+
+      /* Save to backend */
+      saveTasksToBackend();
+  });
 
   /* Save/Edit click handler */
   saveBtn.addEventListener('click', () => {
       const weekKey = formatWeekKey(date);
-
       const dayDiv = taskCard.parentElement;
-      const dayIndex = parseInt(dayDiv.id.replace('d', '')) - 1;
+      const dayIdx = parseInt(dayDiv.id.replace('d', '')) - 1;
 
       if (saveBtn.dataset.mode === 'save') {
           const taskText = input.value.trim();
+          if (!taskText) {
+              alert('Please enter a task');
+              return;
+          }
+
           const selectedRadio = statusDiv.querySelector('input[type="radio"]:checked');
           const taskStatus = selectedRadio ? selectedRadio.value : 'No status';
 
@@ -129,6 +223,8 @@ taskCard.classList.add('task-card');
           /* Replace input with text */
           const savedText = document.createElement('p');
           savedText.textContent = `${taskText} - ${taskStatus}`;
+          savedText.style.margin = '5px 0';
+          savedText.style.color = '#000';
           taskCard.replaceChild(savedText, input);
 
           /* Disable radios */
@@ -140,20 +236,34 @@ taskCard.classList.add('task-card');
 
           /* Store in tasksByWeek */
           if (!tasksByWeek[weekKey]) tasksByWeek[weekKey] = {};
-          if (!tasksByWeek[weekKey][dayIndex]) tasksByWeek[weekKey][dayIndex] = [];
-          tasksByWeek[weekKey][dayIndex].push({
+          if (!tasksByWeek[weekKey][dayIdx]) tasksByWeek[weekKey][dayIdx] = [];
+          
+          tasksByWeek[weekKey][dayIdx].push({
               text: taskText,
-              status: taskStatus
+              status: taskStatus,
+              id: taskId
           });
+
+          /* Save to backend */
+          saveTasksToBackend();
+
       } else if (saveBtn.dataset.mode === 'edit') {
           const existingText = taskCard.querySelector('p').textContent.split(' - ')[0];
           const newInput = document.createElement('input');
           newInput.type = 'text';
           newInput.value = existingText;
+          newInput.placeholder = 'Enter task';
           taskCard.replaceChild(newInput, taskCard.querySelector('p'));
 
           /* Enable radios */
           statusDiv.querySelectorAll('input').forEach(r => r.disabled = false);
+
+          /* Remove old task from storage */
+          if (tasksByWeek[weekKey] && tasksByWeek[weekKey][dayIdx]) {
+              tasksByWeek[weekKey][dayIdx] = tasksByWeek[weekKey][dayIdx].filter(
+                  t => t.id !== taskId
+              );
+          }
 
           saveBtn.dataset.mode = 'save';
           saveBtn.textContent = 'Save';
@@ -169,12 +279,13 @@ const addBtns = document.querySelectorAll('.add-task');
 addBtns.forEach(addBtn => {
 addBtn.addEventListener('click', () => {
 const dayDiv = addBtn.closest('.day') || addBtn.closest('.content') || addBtn.parentElement;
-const taskCard = createTaskCard();
+const dayIdx = parseInt(dayDiv.id.replace('d', '')) - 1;
+const taskCard = createTaskCard('', 'default', null, dayIdx);
 dayDiv.appendChild(taskCard);
 });
 });
 
-/* Initial week load */
-updateWeek();
+/* Initial load */
+loadTasksFromBackend();
 
 }); // end DOMContentLoaded

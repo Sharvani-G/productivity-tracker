@@ -53,6 +53,7 @@ app.get("/report", (req, res) => res.render("report.ejs"));
 app.use(express.json());
 
 const filePath = path.join(process.cwd(), "tasks.json");
+const weeklyTasksPath = path.join(process.cwd(), "weekly-tasks.json");
 
 app.post('/save-summary', (req, res) => {
     const newSummary = req.body;
@@ -72,6 +73,35 @@ app.post('/save-summary', (req, res) => {
 
     fs.writeFileSync(filePath, JSON.stringify(allData, null, 2));
     res.send({ success: true });
+});
+
+// GET endpoint to fetch all weekly tasks
+app.get('/api/weekly-tasks', (req, res) => {
+    try {
+        if (fs.existsSync(weeklyTasksPath)) {
+            const raw = fs.readFileSync(weeklyTasksPath, 'utf-8');
+            const data = JSON.parse(raw);
+            res.json(data);
+        } else {
+            // Return empty object if file doesn't exist
+            res.json({});
+        }
+    } catch (error) {
+        console.error('Error reading weekly tasks:', error);
+        res.status(500).json({ error: 'Failed to load weekly tasks' });
+    }
+});
+
+// POST endpoint to save weekly tasks
+app.post('/api/weekly-tasks', (req, res) => {
+    try {
+        const weeklyTasks = req.body;
+        fs.writeFileSync(weeklyTasksPath, JSON.stringify(weeklyTasks, null, 2));
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error saving weekly tasks:', error);
+        res.status(500).json({ error: 'Failed to save weekly tasks' });
+    }
 });
 
 
